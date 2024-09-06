@@ -1,0 +1,57 @@
+from flask import Flask, jsonify, request
+import pandas as pd
+
+
+# Initialize Flask app
+app = Flask(__name__)
+
+# Load dataset
+df = pd.read_csv('students.csv')
+
+# Endpoint to get all students
+@app.route('/students', methods=['GET'])
+def get_students():
+    students = df.to_dict(orient='records')
+    return jsonify(students)
+
+# Endpoint to get a student by ID
+@app.route('/students/<int:student_id>', methods=['GET'])
+def get_student(student_id):
+    student = df[df['id'] == student_id].to_dict(orient='records')
+    if student:
+        return jsonify(student[0])
+    else:
+        return jsonify({"error": "Student not found"}), 404
+
+# Endpoint to add a new student
+@app.route('/students', methods=['POST'])
+def add_student():
+    new_student = request.json
+    global df
+    df = df.append(new_student, ignore_index=True)
+    return jsonify(new_student), 201
+
+# Endpoint to update a student's details
+@app.route('/students/<int:student_id>', methods=['PUT'])
+def update_student(student_id):
+    global df
+    student = df[df['id'] == student_id]
+    if student.empty:
+        return jsonify({"error": "Student not found"}), 404
+
+    df.loc[df['id'] == student_id, df.columns] = request.json
+    return jsonify(request.json)
+
+# Endpoint to delete a student
+@app.route('/students/<int:student_id>', methods=['DELETE'])
+def delete_student(student_id):
+    global df
+    student = df[df['id'] == student_id]
+    if student.empty:
+        return jsonify({"error": "Student not found"}), 404
+    
+    df = df[df['id'] != student_id]
+    return jsonify({"message": "Student deleted"})
+
+if __name__ == '__main__':
+    app.run(debug=True)
